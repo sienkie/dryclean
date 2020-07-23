@@ -134,21 +134,25 @@ prepare_detergent <- function(normal.table.path = NA, use.all = TRUE, choose.ran
             this.cov = tryCatch(readRDS(normal.table[nm, normal_cov]), error = function(e) NULL)
             if (!is.null(this.cov)){
                 this.cov = this.cov[, field] %>% gr2dt() %>% setnames(., field, "signal")
-                reads = this.cov[seqnames == "22", .(seqnames, signal)]
+                reads = this.cov[seqnames == seqnames[1], .(seqnames, signal)]
                 reads[, median.chr := median(.SD$signal, na.rm = T), by = seqnames]
                 reads[is.na(signal), signal := median.chr]
                 min.cov = min(reads[signal > 0]$signal, na.rm = T)
                 reads[signal == 0, signal := min.cov]
                 reads[signal < 0, signal := min.cov]
-                reads = log(reads[, .(signal)])
-                reads = transpose(reads)
-                reads = cbind(reads, nm)
-            } else {reads = data.table(NA)}
+                reads = cbind(log(reads$signal, nm))
+#                reads = transpose(reads)
+#                reads = cbind(reads, nm)
+            } else {NULL}
             return(reads)}, mc.cores = num.cores)
-        
+
+      browser()
+      nix = sapply(mat.small, is.null)
+      mat.small = mat.small[!nix]
         gc()
-        
-        mat.sub = rbindlist(mat.small, fill = T)
+
+      mat.sub = as.data.table(do.call(rbind, mat.small))
+#        mat.sub = rbindlist(mat.small, fill = T)
         mat.sub = na.omit(mat.sub)
         ix = ncol(mat.sub)
         samp.names = mat.sub[, ..ix]
@@ -224,7 +228,8 @@ prepare_detergent <- function(normal.table.path = NA, use.all = TRUE, choose.ran
     mat.n = mclapply(samp.final[, sample], function(nm){
         this.cov = tryCatch(readRDS(samp.final[nm, normal_cov]), error = function(e) NULL)
         if (!is.null(this.cov)){
-            all.chr = c(as.character(1:22), "X")
+          all.chr = names(which(seqlengths(this.cov)>5e6))
+##            all.chr = c(as.character(1:22), "X")
             this.cov = this.cov %Q% (seqnames %in% all.chr)
             this.cov = this.cov[, field] %>% gr2dt() %>% setnames(., field, "signal")
             setnames(this.cov, "signal", "signal.org")
@@ -245,17 +250,20 @@ prepare_detergent <- function(normal.table.path = NA, use.all = TRUE, choose.ran
             reads[, signal := log(signal)]
             reads = reads[, .(signal)]
             if (!any(is.infinite(reads$signal))){
-                reads = transpose(reads)
+                reads = cbind(reads$signal)
                 return(reads)
             } 
         } 
     }, mc.cores = num.cores)
 
+
     gc()
 
-    mat.bind = rbindlist(mat.n, fill = T)
-    mat.bind = na.omit(mat.bind)
-    mat.bind.t = transpose(mat.bind)
+  mat.bind = do.call(rbind, mat.n)
+#    mat.bind = rbindlist(mat.n, fill = T)
+  mat.bind = na.omit(mat.bind)
+  mat.bind.t = t(mat.bind)
+#    mat.bind.t = transpose(mat.bind)
 
     rm(mat.bind)
     gc()
@@ -264,7 +272,7 @@ prepare_detergent <- function(normal.table.path = NA, use.all = TRUE, choose.ran
         message("Starting decomposition")
     }
 
-    mat.bind.t = as.matrix(mat.bind.t)
+#    mat.bind.t = as.matrix(mat.bind.t)
     gc()
 
     detergent = rrpca.mod(mat.bind.t, trace = F, tol = tolerance)
@@ -755,3 +763,28 @@ start_wash_cycle <- function(cov, mc.cores = 1, detergent.pon.path = NA, verbose
 message("Giddy up!")
 
     
+#' @name rebin
+#' @rdname internal
+#' @title reaggregate WGS bins around a new target value
+#' @description 
+#' 
+#' Given GRanges of bins will aggregate around new bin width. 
+#' 
+#' @param cov GRanges of binned genome-wide coverage
+#' @param binwidth new binwidth
+#' @return GRanges of binned genome-wide coverage at new bin
+#' @author Marcin Imielinski
+rebin = function(cov, binwidth, field = names(values(cov))[1], FUN = mean, na.rm = TRUE)
+{
+  tmp = as.data.table(cov[, c()])
+  tmp$value =  values(cov)[[field]]
+  outdt = tmp[
+    , FUN(value, na.rm = na.rm),
+      by = .(seqnames, start = floor(start/binwidth)*binwidth + 1)]
+  ## xtYao update:
+  ## by = .(seqnames, start = ceiling(start/binwidth)*binwidth)]
+  outdt[, end := start + binwidth -1]
+  out = dt2gr(outdt)
+  names(values(out)) = field
+  return(out)
+}
