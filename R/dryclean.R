@@ -250,7 +250,7 @@ prepare_detergent <- function(normal.table.path = NA, use.all = TRUE, choose.ran
             reads[, signal := log(signal)]
             reads = reads[, .(signal)]
             if (!any(is.infinite(reads$signal))){
-                reads = cbind(reads$signal)
+                reads = rbind(reads$signal)
                 return(reads)
             } 
         } 
@@ -258,7 +258,7 @@ prepare_detergent <- function(normal.table.path = NA, use.all = TRUE, choose.ran
 
     gc()
 
-  mat.bind = do.call(cbind, mat.n)
+  mat.bind = do.call(rbind, mat.n)
 #    mat.bind = rbindlist(mat.n, fill = T)
   mat.bind = na.omit(mat.bind)
   mat.bind.t = t(mat.bind)
