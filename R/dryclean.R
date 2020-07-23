@@ -689,7 +689,7 @@ start_wash_cycle <- function(cov, mc.cores = 1, detergent.pon.path = NA, verbose
         stop("If germiline.filter is set to TRUE, provide path to germline marker file")
     }
 
-  all.chr = names(which(seqlengths(this.cov)>5e6))
+  all.chr = names(which(seqlengths(cov)>5e6))
 #  all.chr = c(as.character(1:22), "X")
     
     if (is.human){
