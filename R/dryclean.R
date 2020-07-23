@@ -669,7 +669,6 @@ prep_cov <- function(m.vec = m.vec, blacklist = FALSE, burnin.samples.path = NA)
 #' @author Aditya Deshpande
 
 
-
 start_wash_cycle <- function(cov, mc.cores = 1, detergent.pon.path = NA, verbose = TRUE, whole_genome = TRUE, use.blacklist = FALSE, chr = NA, germline.filter = FALSE, germline.file = NA, field = "reads.corrected", is.human = TRUE){
 
     if(verbose == TRUE){
@@ -690,7 +689,8 @@ start_wash_cycle <- function(cov, mc.cores = 1, detergent.pon.path = NA, verbose
         stop("If germiline.filter is set to TRUE, provide path to germline marker file")
     }
 
-    all.chr = c(as.character(1:22), "X")
+  all.chr = names(which(seqlengths(this.cov)>5e6))
+#  all.chr = c(as.character(1:22), "X")
     
     if (is.human){
         cov = cov %Q% (seqnames %in% all.chr)
