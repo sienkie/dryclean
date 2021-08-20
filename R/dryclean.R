@@ -137,7 +137,7 @@ prepare_detergent <- function(normal.table.path = NA, use.all = TRUE, choose.ran
         mat.small = mclapply(normal.table[, sample], function(nm){
             this.cov = tryCatch(readRDS(normal.table[nm, normal_cov]), error = function(e) NULL)
             if (!is.null(this.cov)){
-                this.cov = this.cov[, field] %>% gr2dt() %>% setnames(., field, "signal") %>% gr.nochr
+                this.cov = this.cov[, field] %>% gr2dt() %>% setnames(., field, "signal") %>% dt2gr() %>% gr.nochr() %>% gr2dt()
                 ## reads = this.cov[seqnames == "22", .(seqnames, signal)]
                 reads = this.cov[seqnames == seqnames[1], .(seqnames, signal)]
                 reads[, median.chr := median(.SD$signal, na.rm = T), by = seqnames]
